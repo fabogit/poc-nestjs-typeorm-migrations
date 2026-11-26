@@ -1,105 +1,160 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# poc-nestjs-typeorm-migrations
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> An enterprise NestJS 10 REST microservice demonstrating TypeORM DataSource configuration, standalone SQL migration versioning, entity lifecycle subscribers, and PostgreSQL persistence.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Inception (First Commit):** `2023-11-28` • **Batch / Horizon:** `batch-2023` • **Architecture Domain:** `Database Migrations / TypeORM DataSource`
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 📌 Architecture & Overview
 
-## Installation
+`nestjs-typeorm` demonstrates production-ready relational database management using NestJS 10 and TypeORM 0.3+. It highlights the separation between dynamic application runtime configuration (`DatabaseModule`) and standalone CLI migration compilation (`db/migrations/`), ensuring migrations execute reliably in container deployment pipelines.
 
-Set node version (from .nvmrc) and install packages
+The data model showcases complex enterprise entity associations: abstract inheritance (`AbstractEntity`), one-to-one listings, one-to-many comments, many-to-many tags, and event-driven database lifecycle interception via `ItemSubscriber`.
 
-```bash
-$ nvm use && npm i
+```
+                              +-----------------------------------------------+
+                              |                nestjs-typeorm                 |
+                              |                 (Port: 3000)                  |
+                              |                                               |
+[ HTTP Client ]               |  +--------------------+                       |
+       |                      |  | ValidationPipe     |                       |
+       | HTTP (REST)          |  | (whitelist: true)  |                       |
+       v                      |  +---------+----------+                       |
++---------------------------+ |            |                                  |
+| ItemsController           +-+->+---------v----------+                       |
+| (/items, /items/:id)      | |  | ItemsService       |                       |
++---------------------------+ |  +---------+----------+                       |
+                              |            |                                  |
+                              |            v                                  |
+                              |  +--------------------+                       |
+                              |  | TypeORM Repository |                       |
+                              |  | (EntityManager)    |                       |
+                              |  +----+---------+-----+                       |
+                              |       |         |                             |
+                              |       |         +------------+                |
+                              |       v                      v                |
+                              |  +--------------------+ +-------------------+ |
+                              |  | ItemSubscriber     | | Domain Entities   | |
+                              |  | (afterInsert / upd)| | (Item, Listing,   | |
+                              |  +--------------------+ |  Comment, Tag)    | |
+                              |                         +---------+---------+ |
+                              +-----------------------------------|-----------+
+                                                                  v
+                                                        +-------------------+
+                                                        | PostgreSQL DB     |
+                                                        | (Docker Compose)  |
+                                                        +-------------------+
 ```
 
-Start database container
+* **Context:** Database architecture reference implementation evaluating TypeORM 0.3 `DataSource` initialization, schema migration workflows, and lifecycle subscribers within NestJS.
+* **Key Patterns:**
+  * **Abstract Entity Inheritance:** Reusable base entity (`AbstractEntity`) providing automated primary key generation (`id`) and timestamp auditing (`createdDate`, `updatedDate`).
+  * **Discrete CLI Migrations:** Versioned TypeScript migrations (`INIT`, `PublicItems`) executed via TypeORM CLI independently of the web server runtime.
+  * **Entity Lifecycle Event Subscribers:** Intercepting entity mutations (`ItemSubscriber`) to execute audit logging and side-effects.
+  * **Relational Association Modeling:** Composing 1:1 (`Listing`), 1:N (`Comment`), and M:N (`Tag`) relationships with cascading rules.
+
+---
+
+## 🛠 Tech Stack
+
+* **Framework & Core:** NestJS 10.x (`@nestjs/core`, `@nestjs/common`, `@nestjs/platform-express`)
+* **ORM & Database:** TypeORM 0.3.x, `@nestjs/typeorm`, PostgreSQL (`pg`), Docker Compose
+* **Configuration & Validation:** `@nestjs/config`, `class-validator`, `class-transformer`
+* **Testing & Tooling:** Jest, Supertest, TypeScript 5.x
+
+---
+
+## ✨ Features & Endpoints
+
+* **Item Catalog Management:** Creation, querying, and updating of structured commercial items.
+* **Nested Entity Relations:** Managing associated pricing listings, user comments, and descriptive tags.
+* **Audit Trail Subscribers:** Automated console logging of entity insertions and updates via `ItemSubscriber`.
+* **Automated Migration Engine:** Preconfigured TypeORM CLI scripts for generating and running schema migrations.
+
+### Key API Routes / Interfaces
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/items` | Retrieve items with populated listings, comments, and tags. |
+| `GET` | `/items/:id` | Fetch specific item entity by its unique ID. |
+| `POST` | `/items` | Create a new item record with optional nested listing data. |
+| `PATCH` | `/items/:id` | Update item properties and tag associations. |
+| `DELETE` | `/items/:id` | Remove an item and cascade related entity cleanup. |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* Node.js `>= 18.0.0`
+* Docker & Docker Compose
+* npm `>= 8.0.0`
+
+### Installation
 
 ```bash
-$ docker-compose up
+# Clone the repository
+git clone https://github.com/fabogit/poc-nestjs-typeorm-migrations.git
+cd poc-nestjs-typeorm-migrations
+
+# Install dependencies
+npm install
 ```
 
-set up mysql to have a database named as the env variable `MYSQL_DATABASE`
+### Environment Configuration
 
-Stop docker container
+Copy the environment template file:
 
 ```bash
-$ docker-compose down
+cp .env.template .env
 ```
 
-## Running the app
+Ensure `.env` matches your local database credentials:
+
+```env
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=items_db
+PORT=3000
+```
+
+### Starting PostgreSQL via Docker
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+docker compose up -d
 ```
 
-## Test
+### Running Migrations
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-
-# test item service
-$ npm test items.service
+# Run pending TypeORM migrations
+npm run migration:run
 ```
 
-## Migrations
+### Running the Application
 
 ```bash
-# create an INIT migration
-$ npm run typeorm:create-migration --name=INIT
+# Development mode with hot-reload
+npm run start:dev
 
-# run up migrations
-$ npm run typeorm:run-migrations
-
-# run down migrations
-$ npm run typeorm:revert-migrations
+# Production build and execution
+npm run build
+npm run start:prod
 ```
 
-## Support
+### Running Tests
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm run test
+npm run test:e2e
+```
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 📄 License & Author
 
-## License
-
-Nest is [MIT licensed](LICENSE).
+Developed by [@fabogit](https://github.com/fabogit).
